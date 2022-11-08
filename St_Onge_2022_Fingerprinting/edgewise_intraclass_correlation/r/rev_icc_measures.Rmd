@@ -1,0 +1,335 @@
+---
+title: "rev_plot_icc_measures"
+output: html_document
+date: "2022-10-10"
+---
+
+```{r}
+library(tidyverse)
+library(glue)
+library(ggnewscale)
+options(scipen = 999)
+```
+
+```{r}
+icc_sub_meas <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_metrics_sub_100_40.csv")
+icc_task_meas <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_mertics_task_100_40.csv")
+icc_age_overlap_sub <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_metrics_sub_bin_age_overlap_100_40.csv")
+icc_age_overlap_task <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_metrics_task_bin_age_overlap_100_40.csv")
+icc_sub_task_overlap <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_metrics_sub_task_overlap_100_40.csv")
+```
+
+First, do the mean_ICC graphs. We need to clean the data
+
+```{r}
+icc_sub_meas_clean_flip <- icc_sub_meas %>%
+  pivot_wider(names_from=c(metric), values_from=c(value)) %>%
+  mutate(se = 1.96*sqrt((prop_bin * (1 - prop_bin)) / size_network)) %>%
+  mutate(window = as.factor(window)) %>%
+  mutate(window = fct_relevel(window, c("w01", "w02", "w03", "w04", "w05", "w06", "w07", 'w08', 'w09', 'w10'))) %>%
+  mutate(network = as.factor(network)) %>%
+  filter(network != "whole_brain")
+
+icc_task_meas_clean_flip <- icc_task_meas %>%
+  pivot_wider(names_from=c(metric), values_from=c(value)) %>%
+  mutate(se = 1.96*sqrt((prop_bin * (1 - prop_bin)) / size_network)) %>%
+  mutate(window = as.factor(window)) %>%
+  mutate(window = fct_relevel(window, c("w01", "w02", "w03", "w04", "w05", "w06", "w07", 'w08', 'w09', 'w10'))) %>%
+  mutate(network = as.factor(network)) %>%
+  filter(network != "whole_brain")
+
+icc_age_overlap_sub_clean_flip <- icc_age_overlap_sub %>%
+  mutate(se = 1.96*sqrt((value * (1 - value)) / size_net)) %>%
+  mutate(window_pair = as.factor(window_pair)) %>%
+  mutate(window_pair = fct_relevel(window_pair, c("w01_w02", "w02_w03", "w03_w04", "w04_w05", "w05_w06", "w06_w07", 'w07_w08', 'w08_w09', 'w09_w10'))) %>%
+  mutate(network = as.factor(network)) %>%
+  filter(network != "whole_brain")
+
+icc_age_overlap_task_clean_flip <- icc_age_overlap_task %>%
+  mutate(se = 1.96*sqrt((value * (1 - value)) / size_net)) %>%
+  mutate(window_pair = as.factor(window_pair)) %>%
+  mutate(window_pair = fct_relevel(window_pair, c("w01_w02", "w02_w03", "w03_w04", "w04_w05", "w05_w06", "w06_w07", 'w07_w08', 'w08_w09', 'w09_w10'))) %>%
+  mutate(network = as.factor(network)) %>%
+  filter(network != "whole_brain")
+
+icc_sub_task_overlap_clean_flip <- icc_sub_task_overlap %>%
+  mutate(se = 1.96*sqrt((val_overlap_sub_task * (1 - val_overlap_sub_task)) / size_net)) %>%
+  mutate(window_pair = as.factor(window_pair)) %>%
+  mutate(window_pair = fct_relevel(window_pair, c("w01_w01", "w02_w02", "w03_w03", "w04_w04", "w05_w05", "w06_w06", "w07_w07", 'w08_w08', 'w09_w09', 'w10_w10'))) %>%
+  mutate(network = as.factor(network)) %>%
+  filter(network != "whole_brain")
+
+```
+
+Graph 1 - Within network - Mean ICC
+
+```{r}
+
+icc_sub_meas_clean_flip_within <- icc_sub_meas_clean_flip %>%
+  filter(type == "within")
+icc_task_meas_clean_flip_within <- icc_task_meas_clean_flip %>%
+  filter(type == "within")
+
+icc_sub_task_within_plot1 <- icc_sub_meas_clean_flip_within %>%
+  ggplot(aes(x=window, y=mean_icc)) +
+  geom_point(aes(color=network), size=2) +
+  geom_line(aes(color=network, group=network)) +
+  geom_errorbar(aes(ymin = mean_icc - std_icc, ymax = mean_icc + std_icc, color=network), alpha=0.5, width=0.2) +
+  scale_color_manual(values = c("default_mode"="#CD3E4E", "dorsal_attention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280",
+                                        "salience_ventral_attention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"),
+                                        labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic",
+                                                 "Salience", "Somatomotor", "Visual"), 
+                                                name = "Networks\nIndividual-level") +
+  new_scale_color() + 
+  #Second set
+  geom_point(data=icc_task_meas_clean_flip_within, aes(x=window, y=mean_icc, color=network), shape=25, stroke=1, fill="white", size=1.5) +
+  geom_line(data=icc_task_meas_clean_flip_within, aes(color=network, group=network), linetype='dashed') +
+  geom_errorbar(data=icc_task_meas_clean_flip_within, aes(ymin = mean_icc - std_icc, ymax = mean_icc + std_icc, color=network), alpha=0.5, width=0.2) +
+  ylim(0, 1) +
+  theme_classic() +
+  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+        text = element_text(family="sans", size=14), #Imposes font family and size
+        axis.title.x = element_text(face="bold"), #Bolds the axis title
+        axis.title.y = element_text(face="bold"),
+        legend.position="none") +
+  scale_color_manual(values = c("default_mode"="#CD3E4E", "dorsal_attention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280",
+                                        "salience_ventral_attention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"),
+                                        labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic",
+                                                 "Salience", "Somatomotor", "Visual"), 
+                                                name = "Networks\nTask-level") +
+  scale_x_discrete(labels = c("30", "35", "39", "44", "48", "54", "59", "69")) +
+  xlab("Average age by window") +
+  ylab("Average intraclass correlation")
+
+#icc_sub_task_within_plot1
+
+#ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_mean_icc_within_net_150_40.png", icc_sub_task_within_plot1, width = 15, height=10, units='cm', dpi=500)
+```
+
+```{r}
+icc_sub_meas_clean_flip_between <- icc_sub_meas_clean_flip %>%
+  filter(type == "between")
+icc_task_meas_clean_flip_between <- icc_task_meas_clean_flip %>%
+  filter(type == "between")
+
+icc_sub_task_between_plot1 <- icc_sub_meas_clean_flip_between %>%
+  ggplot(aes(x=window, y=mean_icc)) +
+  geom_point(aes(color=network), size=2) +
+  geom_line(aes(color=network, group=network)) +
+  geom_errorbar(aes(ymin = mean_icc - std_icc, ymax = mean_icc + std_icc, color=network), alpha=0.5, width=0.2) +
+  #Second set
+  geom_point(data=icc_task_meas_clean_flip_between, aes(x=window, y=mean_icc, color=network), shape=25, stroke=1, fill="white", size=1.5) +
+  geom_line(data=icc_task_meas_clean_flip_between, aes(color=network, group=network), linetype='dashed') +
+  geom_errorbar(data=icc_task_meas_clean_flip_between, aes(ymin = mean_icc - std_icc, ymax = mean_icc + std_icc, color=network), alpha=0.5, width=0.2) +
+  ylim(0, 1) +
+  theme_classic() +
+  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+        text = element_text(family="sans", size=14), #Imposes font family and size
+        axis.title.x = element_text(face="bold"), #Bolds the axis title
+        axis.title.y = element_text(face="bold"),
+        legend.position = "none") +
+  scale_color_manual(values = c("default_mode"="#CD3E4E", "dorsal_attention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280",
+                                        "salience_ventral_attention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"),
+                                        labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic",
+                                                 "Salience", "Somatomotor", "Visual"), 
+                                                name = "Networks") +
+  scale_x_discrete(labels = c("30", "35", "39", "44", "48", "54", "59", "69")) +
+  xlab("Average age by window") +
+  ylab("Average intraclass correlation")
+
+#icc_sub_task_between_plot1
+
+ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_mean_icc_between_net_100_40.png", icc_sub_task_between_plot1, width = 15, height=10, units='cm', dpi=500)
+```
+
+For the proportions, will have to separate sub and task: overlaps too much.
+
+```{r}
+icc_sub_meas_clean_flip_within <- icc_sub_meas_clean_flip %>%
+  filter(type == "between")
+icc_task_meas_clean_flip_within <- icc_task_meas_clean_flip %>%
+  filter(type == "between")
+
+icc_sub_task_within_prop_plot1 <- icc_sub_meas_clean_flip_within %>%
+  ggplot(aes(x=window, y=prop_bin)) +
+  geom_point(aes(color=network), size=2) +
+  geom_line(aes(color=network, group=network)) +
+  geom_errorbar(aes(ymin = prop_bin - se, ymax = prop_bin + se, color=network), alpha=0.5, width=0.2) +
+  #Second set
+  geom_point(data=icc_task_meas_clean_flip_within, aes(x=window, y=prop_bin, color=network), shape=25, stroke=1, fill="white", size=1.5) +
+  geom_line(data=icc_task_meas_clean_flip_within, aes(color=network, group=network), linetype='dashed') +
+  geom_errorbar(data=icc_task_meas_clean_flip_within, aes(ymin = prop_bin - se, ymax = prop_bin + se, color=network), alpha=0.5, width=0.2) +
+  ylim(0, 0.5) +
+  theme_classic() +
+  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+        text = element_text(family="sans", size=14), #Imposes font family and size
+        axis.title.x = element_text(face="bold"), #Bolds the axis title
+        axis.title.y = element_text(face="bold"),
+        legend.position = "none") +
+  scale_color_manual(values = c("default_mode"="#CD3E4E", "dorsal_attention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280",
+                                        "salience_ventral_attention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"),
+                                        labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic",
+                                                 "Salience", "Somatomotor", "Visual"), 
+                                                name = "Networks") +
+  scale_x_discrete(labels = c("30", "35", "39", "44", "48", "54", "59", "69")) +
+  xlab("Average age by window") +
+  ylab("Proportion by network")
+
+#icc_sub_task_within_prop_plot1
+
+#ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_prop_between_net_150_40.png", icc_sub_task_within_prop_plot1, width = 15, height=10, units='cm', dpi=500)
+
+```
+
+```{r}
+icc_sub_age_overlap_clean_flip_within <- icc_age_overlap_sub_clean_flip %>%
+  filter(type == "within")
+icc_task_age_overlap_clean_flip_within <- icc_age_overlap_task_clean_flip %>%
+  filter(type == "within")
+
+icc_age_sub_task_overlap_within_plot1 <- icc_sub_age_overlap_clean_flip_within %>%
+  ggplot(aes(x=window_pair, y=value)) +
+  geom_point(aes(color=network), size=2) +
+  geom_line(aes(color=network, group=network)) +
+  geom_errorbar(aes(ymin = value - se, ymax = value + se, color=network), alpha=0.5, width=0.2) +
+  #Second set
+  geom_point(data=icc_task_age_overlap_clean_flip_within, aes(x=window_pair, y=value, color=network), shape=25, stroke=1, fill="white", size=1.5) +
+  geom_line(data=icc_task_age_overlap_clean_flip_within, aes(color=network, group=network), linetype='dashed') +
+  geom_errorbar(data=icc_task_age_overlap_clean_flip_within, aes(ymin = value - se, ymax = value + se, color=network), alpha=0.5, width=0.2) +
+  ylim(0, 1) +
+  theme_classic() +
+  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+        text = element_text(family="sans", size=14), #Imposes font family and size
+        axis.title.x = element_text(face="bold"), #Bolds the axis title
+        axis.title.y = element_text(face="bold"),
+        legend.position = "none",
+        axis.text.x = element_text(angle=45, vjust=0.6)) +
+  scale_color_manual(values = c("default_mode"="#CD3E4E", "dorsal_attention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280",
+                                        "salience_ventral_attention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"),
+                                        labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic",
+                                                 "Salience", "Somatomotor", "Visual"), 
+                                                name = "Networks") +
+  scale_x_discrete(labels = c("[27-32]", "[32-37]", "[37-41]", "[41-45]", "[45-50]", "[50-56]", "[56-62]", "[62-68]", '[68-76]')) +
+  xlab("Average age of pairs of overlapped windows") +
+  ylab("Proportion of overlap")
+
+#c("[30-35]", "[35-39]", "[39-44]", "[44-48]", "[48-54]", "[54-59]","[59-69]")
+
+icc_age_sub_task_overlap_within_plot1
+
+ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_age_sub_task_overlap_within_net_100_40.png", icc_age_sub_task_overlap_within_plot1, width = 15, height=10, units='cm', dpi=500)
+```
+
+```{r}
+icc_sub_age_overlap_clean_flip_between <- icc_age_overlap_sub_clean_flip %>%
+  filter(type == "between")
+icc_task_age_overlap_clean_flip_between <- icc_age_overlap_task_clean_flip %>%
+  filter(type == "between")
+
+icc_sub_task_age_overlap_between_prop_plot1 <- icc_sub_age_overlap_clean_flip_between %>%
+  ggplot(aes(x=window_pair, y=value)) +
+  geom_point(aes(color=network), size=2) +
+  geom_line(aes(color=network, group=network)) +
+  geom_errorbar(aes(ymin = value - se, ymax = value + se, color=network), alpha=0.5, width=0.2) +
+  #Second set
+  geom_point(data=icc_task_age_overlap_clean_flip_between, aes(x=window_pair, y=value, color=network), shape=25, stroke=1, fill="white", size=1.5) +
+  geom_line(data=icc_task_age_overlap_clean_flip_between, aes(color=network, group=network), linetype='dashed') +
+  geom_errorbar(data=icc_task_age_overlap_clean_flip_between, aes(ymin = value - se, ymax = value + se, color=network), alpha=0.5, width=0.2) +
+  ylim(0, 1) +
+  theme_classic() +
+  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+        text = element_text(family="sans", size=14), #Imposes font family and size
+        axis.title.x = element_text(face="bold"), #Bolds the axis title
+        axis.title.y = element_text(face="bold"),
+        legend.position = "none",
+        axis.text.x = element_text(angle=45, vjust=0.6)) +
+  scale_color_manual(values = c("default_mode"="#CD3E4E", "dorsal_attention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280",
+                                        "salience_ventral_attention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"),
+                                        labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic",
+                                                 "Salience", "Somatomotor", "Visual"), 
+                                                name = "Networks") +
+  scale_x_discrete(labels = c("[27-32]", "[32-37]", "[37-41]", "[41-45]", "[45-50]", "[50-56]", "[56-62]", "[62-68]", '[68-76]')) +
+  xlab("Average age of pairs of overlapped windows") +
+  ylab("Proportion of overlap")
+
+#c("[30-33]", "[33-36]", "[36-39]", "[39-41]", "[41-44]", "[44-47]","[47-50]","[50-54]", "[54-57]", "[57-61]", "[61-65]", "[65-70]"))
+
+icc_sub_task_age_overlap_between_prop_plot1
+
+ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_age_sub_task_overlap_between_net_100_40.png", icc_sub_task_age_overlap_between_prop_plot1, width = 15, height=10, units='cm', dpi=500)
+```
+
+```{r}
+#icc_sub_task_overlap_clean_flip
+
+icc_sub_task_overlap_clean_flip_within <- icc_sub_task_overlap_clean_flip %>%
+  filter(type == "within")
+
+icc_sub_task_overlap_within_plot1 <- icc_sub_task_overlap_clean_flip_within %>%
+  ggplot(aes(x=window_pair, y=val_overlap_sub_task)) +
+  geom_point(aes(color=network), size=2) +
+  geom_line(aes(color=network, group=network)) +
+  geom_errorbar(aes(ymin = val_overlap_sub_task - se, ymax = val_overlap_sub_task + se, color=network), alpha=0.5, width=0.2) +
+  ylim(0, 0.25) +
+  theme_classic() +
+  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+        text = element_text(family="sans", size=14), #Imposes font family and size
+        axis.title.x = element_text(face="bold"), #Bolds the axis title
+        axis.title.y = element_text(face="bold"),
+        legend.position = 'none') +
+  scale_color_manual(values = c("default_mode"="#CD3E4E", "dorsal_attention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280",
+                                        "salience_ventral_attention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"),
+                                        labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic",
+                                                 "Salience", "Somatomotor", "Visual"), 
+                                                name = "Networks") +
+  scale_x_discrete(labels = c("30", "35", "39", "44", "48", "54", "59", "69")) +
+  xlab("Average age by window") +
+  ylab("Proportion of overlap")
+
+#c("30", "33", "36", "39", "41", "44", "47", "50", "54", "57", "61", "65", "70")
+
+#icc_sub_task_overlap_within_plot1
+
+#ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_overlap_within_net_150_40.png", icc_sub_task_overlap_within_plot1, width = 15, height=10, units='cm', dpi=500)
+
+```
+
+```{r}
+#icc_sub_task_overlap_clean_flip
+
+icc_sub_task_overlap_clean_flip_between <- icc_sub_task_overlap_clean_flip %>%
+  filter(type == "between")
+
+icc_sub_task_overlap_between_plot1 <- icc_sub_task_overlap_clean_flip_between %>%
+  ggplot(aes(x=window_pair, y=val_overlap_sub_task)) +
+  geom_point(aes(color=network), size=2) +
+  geom_line(aes(color=network, group=network)) +
+  geom_errorbar(aes(ymin = val_overlap_sub_task - se, ymax = val_overlap_sub_task + se, color=network), alpha=0.5, width=0.2) +
+  ylim(0, 0.25) +
+  theme_classic() +
+  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+        text = element_text(family="sans", size=14), #Imposes font family and size
+        axis.title.x = element_text(face="bold"), #Bolds the axis title
+        axis.title.y = element_text(face="bold"),
+        legend.position = 'none') +
+  scale_color_manual(values = c("default_mode"="#CD3E4E", "dorsal_attention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280",
+                                        "salience_ventral_attention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"),
+                                        labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic",
+                                                 "Salience", "Somatomotor", "Visual"), 
+                                                name = "Networks") +
+  scale_x_discrete(labels = c("30", "35", "39", "44", "48", "54", "59", "69")) +
+  xlab("Average age by window") +
+  ylab("Proportion of overlap")
+
+icc_sub_task_overlap_between_plot1
+
+ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_overlap_between_net_150_40.png", icc_sub_task_overlap_between_plot1, width = 15, height=10, units='cm', dpi=500)
+```
+

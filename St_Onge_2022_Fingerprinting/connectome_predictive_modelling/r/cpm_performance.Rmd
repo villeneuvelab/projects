@@ -1,0 +1,162 @@
+---
+title: "CPM performance"
+output: html_document
+---
+
+## This quick script is meant to visualize the correlations obtained from the CPM in the sliding-window approach.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggnewscale)
+library(glue)
+```
+
+######## Script to import the model validation
+
+Again, this script is not as easy to use as the command-line scripts. However, little should need to be changed to get the proper output.
+
+```{r}
+#List all the files in a directory
+path_svr <- "/PATH/TO/INPUT/SVR/window_data_fpc_svr/150_40" #Path to CPM parameters for each window using SVR for prediction
+path_lm <- "/PATH/TO/INPUT/LM/window_data_fpc_lm/150_40"
+files_svr <- list.files(path = path_svr, pattern = "^model_validation_fpc_task*") #Replace by name of the files (begining should match between windows)
+files_lm <- list.files(path = path_lm, pattern = "^model_validation_fpc_task*")
+
+window_to_analyze <- "150_40"
+modality_to_analyze <- "task"
+metric_to_analyze <- "fpc"
+
+#Next, create an empty list to store the dataframes
+my_data_svr <- list()
+my_data_lm <- list()
+
+#For all list elements...
+for (i in seq_along(files_svr)) {
+    #Do SVR first
+    df_svr <- read_csv(file = glue("{path_svr}/{files_svr[i]}")) #Reads the dataframe
+    df_svr$window <- c(i, i) #Adds a window variable, based on list index. Will be used for the x in the graphs
+    
+    #Factorize the window variable and bin the p-values
+    df_final_svr <- df_svr %>%
+      mutate(window = as.factor(window)) %>%
+      mutate(pval_test_set_bin = ifelse(pval_test_set < 0.05, "Yes", "No"))
+    
+    my_data_svr[[i]] <- df_final_svr #Assigns the dataframe to the empty list
+    
+    #Repeat for LM
+    df_lm <- read_csv(file = glue("{path_lm}/{files_lm[i]}"))
+    df_lm$window <- c(i,i)
+    
+    df_final_lm <- df_lm %>%
+      mutate(window = as.factor(window)) %>%
+      mutate(pval_test_set_bin = ifelse(pval_test_set < 0.05, "Yes", "No"))
+    
+    my_data_lm[[i]] <- df_final_lm
+}
+
+#Next, we need to merge the data in a single dataframe
+data_svr_all <- dplyr::bind_rows(my_data_svr)
+data_lm_all <- dplyr::bind_rows(my_data_lm)
+
+#Good to go! Last step remaining is just to plot
+
+ages = NA
+
+if (window_to_analyze == "100_40") {
+  ages = c("27", "32", "37", "41", "45", "50","56","62", "68", "76")
+} else if (window_to_analyze == "100_25") {
+  ages = c("27", "31", "33", "36", "39", "41", "44", "47", "50", "53", "57", "61", "65", "69", "75")
+} else if (window_to_analyze == "150_40") {
+  ages = c("30", "35", "39", "44", "48", "54", "59", "69")
+} else if (window_to_analyze == "150_25") {
+  ages = c("30", "33", "36", "39", "41", "44", "47", "50", "54", "57", "61", "65", "70")
+}
+
+label_y_corr = NA
+
+if (modality_to_analyze == "rest" & metric_to_analyze == "fpc") {
+  label_y_corr = "Correlation between real and predicted\nself-identifiability (Rest)"
+} else if (modality_to_analyze == "rest" & metric_to_analyze == "asc") {
+  label_y_corr = "Correlation between real and predicted\nothers-identifiability (Rest)"
+} else if (modality_to_analyze == "task" & metric_to_analyze == "fpc") {
+  label_y_corr = "Correlation between real and predicted\nself-identifiability (Task)"
+} else if (modality_to_analyze == "task" & metric_to_analyze == "asc") {
+  label_y_corr = "Correlation between real and predicted\nothers-identifiability (Task)"
+}
+
+label_y_rmse = NA
+
+if (modality_to_analyze == "rest" & metric_to_analyze == "fpc") {
+  label_y_rmse = "RMSE between real and predicted\nself-identifiability (Rest)"
+} else if (modality_to_analyze == "rest" & metric_to_analyze == "asc") {
+  label_y_rmse = "RMSE between real and predicted\nothers-identifiability (Rest)"
+} else if (modality_to_analyze == "task" & metric_to_analyze == "fpc") {
+  label_y_rmse = "RMSE between real and predicted\nself-identifiability (Task)"
+} else if (modality_to_analyze == "task" & metric_to_analyze == "asc") {
+  label_y_rmse = "RMSE between real and predicted\nothers-identifiability (Task)"
+}
+
+print(ages)
+print(label_y_corr)
+print(label_y_rmse)
+
+#Do the plots for the correlation
+
+plot_model_corr <- data_svr_all %>%
+  mutate(window = as.factor(window)) %>%
+  ggplot(aes(x=window, y=r_value_test_set, group=features)) +
+  geom_point(aes(color=features, shape=pval_test_set_bin), size = 2.5) +
+  geom_line(aes(color=features), linetype="solid") +
+  scale_color_manual(values = c("blue", "red"), labels=c("Negative", "Positive"), name = "Performance\nSVR") +
+  new_scale_color() + #Allows to reuse "color" in the next layer
+  geom_point(data=data_lm_all, aes(x=window, y=r_value_test_set, color=features, shape=pval_test_set_bin), size=2.5, alpha=0.4) +
+  geom_line(data=data_lm_all, aes(x=window, y=r_value_test_set, color=features, group=features), linetype="dashed") +
+  scale_color_manual(values = c("blue", "red"),labels=c("Negative", "Positive"), name = "Performance\nLM") +
+  scale_x_discrete(labels = ages) +
+  scale_shape_manual(name = "Significance", values=c(16,17), labels=c("No", "Yes")) +
+  theme_classic() +
+  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+        text = element_text(family="sans"), #Imposes font family and size
+        axis.title.x = element_text(face="bold"), #Bolds the axis title
+        axis.title.y = element_text(face="bold"),
+        legend.position = 'none') +
+  xlab("Average age by window") +
+  ylab(label_y_corr)
+
+#plot_model_corr
+
+#Do the plots for the RMSE
+
+plot_model_rmse <- data_svr_all %>%
+  mutate(window = as.factor(window)) %>%
+  ggplot(aes(x=window, y=rmse_value_test_set, group=features)) +
+  geom_point(aes(color=features), size = 2.5) +
+  geom_line(aes(color=features), linetype="solid") +
+  scale_color_manual(values = c("blue", "red"), labels=c("Negative", "Positive"), name = "Performance\nSVR") +
+  new_scale_color() + #Allows to reuse "color" in the next layer
+  geom_point(data=data_lm_all, aes(x=window, y=rmse_value_test_set, color=features), size=2.5, alpha=0.4) +
+  geom_line(data=data_lm_all, aes(x=window, y=rmse_value_test_set, color=features, group=features), linetype="dashed") +
+  scale_color_manual(values = c("blue", "red"),labels=c("Negative", "Positive"), name = "Performance\nLM") +
+  scale_x_discrete(labels = ages) +
+  theme_classic() +
+  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+        text = element_text(family="sans", size=14), #Imposes font family and size
+        axis.title.x = element_text(face="bold"), #Bolds the axis title
+        axis.title.y = element_text(face="bold"),
+        legend.position = "none") +
+  xlab("Average age by window") +
+  ylab(label_y_rmse)
+
+#plot_model_rmse
+
+
+ggsave(glue("/PATH/TO/OUTPUT/wind_perf_corr_{window_to_analyze}_{metric_to_analyze}_{modality_to_analyze}.png"), plot=plot_model_corr, width=18, height=12, dpi=500, units='cm')
+
+```
+

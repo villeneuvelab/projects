@@ -1,0 +1,116 @@
+---
+title: "CPM measures calculations"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+```
+
+```{r}
+library(tidyverse)
+library(glue)
+```
+
+The goal is to make graphs on the proportion of edges in a network. We make two separate figures: one for the within network edges and one for the between network edges. This script is not as polished as the other R scripts in this project: there wasn't any formal command-line R script created so the input/output paths needs to be modified manually before launching. There are also very Cam-CAN specific code.
+
+## Network contribution by window.
+
+```{r}
+#For each modality, for each window parameter.
+for (mod in c("rest", "task")) {
+  for (win in c("100_25", "100_40", "150_25", "150_40")) {
+  
+  #Import data
+  net_data <- read_csv(glue("/PATH/TO/DATA/window_fpc_rest_graphs/props_fpc_rest/{win}/prop_data_fpc_{mod}_{win}.csv"))
+  
+  #Clean data
+  poi_clean <- net_data %>%
+  rename('junk' = '...1') %>% #Remove useless column
+  dplyr::select(!junk) %>% #Remove useless column
+  mutate(pop_net = gsub("dorsal_attention", "dorsalattention", pop_net)) %>% #Change naming of some networks
+  mutate(pop_net = gsub("salience_ventral_attention", "salienceventralattention", pop_net)) %>%
+  mutate(pop_net = gsub("default_mode", "defaultmode", pop_net)) %>%
+  separate(pop_net, into = c("bin", "win_size", "step", "feats", "window", "metric", "mod", "network", "within_between"), sep = "_") #Split naming scheme in different columns
+  
+  #Sept within and between network
+  poi_within <- poi_clean %>%
+    filter(within_between == "within")
+
+  poi_between <- poi_clean %>%
+    filter(within_between == "between")
+  
+  #Set the lists for the ages in the graph
+  if (win == "100_25") {
+    ages_window = c("27", "31", "33", "36", "39", "41", "44","47", "50", "53", "57", "61", "65", "69", "75")
+  } else if (win == "100_40") {
+    ages_window = c("27", "32", "37", "41", "45", "50","56","62", "68", "76")
+  } else if (win == "150_25") {
+    ages_window = c("30", "33", "36", "39", "41", "44", "47", "50", "54", "57", "61", "65", "70")
+  } else if (win == "150_40") {
+    ages_window = c("30", "35", "39", "44", "48", "54", "59", "69")
+  }
+  
+  #Not the easiest, but let's do a double loop to do the graphs for all the 
+  for (feat in c("pos", "neg")) {
+    for (net in c("within", "between")) {
+      
+      #Confirm which dataframe we should use
+      if (net == "within") {
+        df = poi_within
+      } else {
+        df = poi_between
+      }
+      
+      #Graph of predictive edges by network.
+      plot_prop <- df %>%
+        filter(feats == feat) %>%
+        ggplot(aes(x=window, y=prop)) +
+        geom_boxplot(outlier.shape = NA, alpha=0.3, linetype='dashed') + 
+        geom_point(aes(color=as.factor(network)), size=2.5) +
+        geom_line(aes(group=network, color=as.factor(network))) +
+        scale_color_manual(values = c("defaultmode"="#CD3E4E", "dorsalattention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280", "salienceventralattention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"), labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic", "Salience/Ventral attention", "Somatomotor", "Visual"), name = "Networks") +
+        scale_x_discrete(labels = ages_window) +
+        theme_classic() +
+        theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
+              panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
+              text = element_text(family="sans", size=14), #Imposes font family and size
+              axis.title.x = element_text(face="bold"), #Bolds the axis title
+              axis.title.y = element_text(face="bold"),
+              legend.position = 'none') +
+            xlab("Average age by window") +
+            ylab("Proportion of predictive\nto non-predictive edges")
+      
+      #Last step: save to file, depending on the parameters in the loop
+      ggsave(glue("/PATH/TO/OUTPUT/prop_fpc_{mod}_{feat}_{net}_{win}.png"), plot=plot_prop, width=12, height=8, units='cm', dpi=500)
+      
+      }
+    
+    }
+  
+  }
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

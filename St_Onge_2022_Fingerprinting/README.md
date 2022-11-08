@@ -36,4 +36,18 @@ I am currently working on adapting most scripts into a fully useable Python pack
         - `fingerprinting/bash/fpc_iden.sh`: This script takes the R script for fingerprint identification accuracy and launches it for a specific set of arguments.
         - `fingerprinting/bash/fpc_age.sh`: This script takes the R script for self- and others-identifiability with age and launches it for a specific set of arguments.
 
-- 
+- Sliding-window - Sample selection
+    - Python scripts
+        - `sliding_window/sliding_window.py`: Main script containing the functions for the sliding window approach. Currently not supporting command-line arguments directly. This script is an adaptation of Vasa et al. (2018), which was originally done in R.
+
+- Connectome Predictive Modelling
+    - Python scripts
+        - `connectome_predictive_modelling/python/cpm_python_v2.py`: Main script to use to compute the connectome predictive modelling (CPM) adapted from the original Matlab script by Shen et al. (2017). This script supports many different arguments, some of which are not fully explained in the script yet. This will be fixed in a later release.
+        - `connectome_predictive_modelling/r/cpm_performance.Rmd`: Main script used to compute the performance of the CPM. Script it not launchable from the command-line: script is a R markdown. The script specifically produce figures showing the performance of the CPM within each window.
+        - `connectome_predictive_modelling/r/proportion_contrib_edges_network.Rmd`: Main script used to compute the proportion of edges contributing to the outcome of interest. Again, it is not launchable from the command-line: script is a R markdown. The script produces figures showing the proportion of edges in each network contributing to the outcome of interest.
+        - `connectome_predictive_modelling/bash/launch_cpm.sh`: Small helper script used to launch the main CPM in python script from the command-line.
+
+- Edgewise intraclass correlation
+    - Python scripts
+        - `edgewise_intraclass_correlation/python/icc_script.py`: Main script computing the ICC based on the method by Amico & Goñi (2018). Includes command-line launch. **Warning**: The script is not optimized for computing the correlations in parallel. This means that this script can take a long time to run, as it is executing the correlations sequentially. In some tests, it took a minimum of 11h and up to 40h for a single window of 100 participants. Carefully consider the computational ressources before using.
+        - `edgewise_intraclass
