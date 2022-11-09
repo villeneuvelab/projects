@@ -12,11 +12,11 @@ options(scipen = 999)
 ```
 
 ```{r}
-icc_sub_meas <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_metrics_sub_100_40.csv")
-icc_task_meas <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_mertics_task_100_40.csv")
-icc_age_overlap_sub <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_metrics_sub_bin_age_overlap_100_40.csv")
-icc_age_overlap_task <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_metrics_task_bin_age_overlap_100_40.csv")
-icc_sub_task_overlap <- read_csv("/Users/fredericst-onge/Desktop/data_dump/icc_metrics_sub_task_overlap_100_40.csv")
+icc_sub_meas <- read_csv("/PATH/TO/INPUT/icc_metrics_sub_100_40.csv")
+icc_task_meas <- read_csv("/PATH/TO/INPUT/icc_mertics_task_100_40.csv")
+icc_age_overlap_sub <- read_csv("/PATH/TO/INPUT/icc_metrics_sub_bin_age_overlap_100_40.csv")
+icc_age_overlap_task <- read_csv("/PATH/TO/INPUT/icc_metrics_task_bin_age_overlap_100_40.csv")
+icc_sub_task_overlap <- read_csv("/PATH/TO/INPUT/icc_metrics_sub_task_overlap_100_40.csv")
 ```
 
 First, do the mean_ICC graphs. We need to clean the data
@@ -104,7 +104,7 @@ icc_sub_task_within_plot1 <- icc_sub_meas_clean_flip_within %>%
 
 #icc_sub_task_within_plot1
 
-#ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_mean_icc_within_net_150_40.png", icc_sub_task_within_plot1, width = 15, height=10, units='cm', dpi=500)
+#ggsave("/PATH/TO/OUTPUT/icc_sub_task_mean_icc_within_net_150_40.png", icc_sub_task_within_plot1, width = 15, height=10, units='cm', dpi=500)
 ```
 
 ```{r}
@@ -141,48 +141,9 @@ icc_sub_task_between_plot1 <- icc_sub_meas_clean_flip_between %>%
 
 #icc_sub_task_between_plot1
 
-ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_mean_icc_between_net_100_40.png", icc_sub_task_between_plot1, width = 15, height=10, units='cm', dpi=500)
+ggsave("/PATH/TO/OUTPUT/icc_sub_task_mean_icc_between_net_100_40.png", icc_sub_task_between_plot1, width = 15, height=10, units='cm', dpi=500)
 ```
 
-For the proportions, will have to separate sub and task: overlaps too much.
-
-```{r}
-icc_sub_meas_clean_flip_within <- icc_sub_meas_clean_flip %>%
-  filter(type == "between")
-icc_task_meas_clean_flip_within <- icc_task_meas_clean_flip %>%
-  filter(type == "between")
-
-icc_sub_task_within_prop_plot1 <- icc_sub_meas_clean_flip_within %>%
-  ggplot(aes(x=window, y=prop_bin)) +
-  geom_point(aes(color=network), size=2) +
-  geom_line(aes(color=network, group=network)) +
-  geom_errorbar(aes(ymin = prop_bin - se, ymax = prop_bin + se, color=network), alpha=0.5, width=0.2) +
-  #Second set
-  geom_point(data=icc_task_meas_clean_flip_within, aes(x=window, y=prop_bin, color=network), shape=25, stroke=1, fill="white", size=1.5) +
-  geom_line(data=icc_task_meas_clean_flip_within, aes(color=network, group=network), linetype='dashed') +
-  geom_errorbar(data=icc_task_meas_clean_flip_within, aes(ymin = prop_bin - se, ymax = prop_bin + se, color=network), alpha=0.5, width=0.2) +
-  ylim(0, 0.5) +
-  theme_classic() +
-  theme(panel.grid.major = element_line(), #Reimports the axis grid (1/2)
-        panel.grid.minor = element_line(), #Reimports the axis gris (1/2)
-        text = element_text(family="sans", size=14), #Imposes font family and size
-        axis.title.x = element_text(face="bold"), #Bolds the axis title
-        axis.title.y = element_text(face="bold"),
-        legend.position = "none") +
-  scale_color_manual(values = c("default_mode"="#CD3E4E", "dorsal_attention"="#00760E", "frontoparietal"="#E69422", "limbic"="#C2B280",
-                                        "salience_ventral_attention"="#C43AFA", "somatomotor"="#4682B4", "visual"="#781286"),
-                                        labels=c("Default mode", "Dorsal attention", "Frontoparietal", "Limbic",
-                                                 "Salience", "Somatomotor", "Visual"), 
-                                                name = "Networks") +
-  scale_x_discrete(labels = c("30", "35", "39", "44", "48", "54", "59", "69")) +
-  xlab("Average age by window") +
-  ylab("Proportion by network")
-
-#icc_sub_task_within_prop_plot1
-
-#ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_prop_between_net_150_40.png", icc_sub_task_within_prop_plot1, width = 15, height=10, units='cm', dpi=500)
-
-```
 
 ```{r}
 icc_sub_age_overlap_clean_flip_within <- icc_age_overlap_sub_clean_flip %>%
@@ -221,7 +182,7 @@ icc_age_sub_task_overlap_within_plot1 <- icc_sub_age_overlap_clean_flip_within %
 
 icc_age_sub_task_overlap_within_plot1
 
-ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_age_sub_task_overlap_within_net_100_40.png", icc_age_sub_task_overlap_within_plot1, width = 15, height=10, units='cm', dpi=500)
+ggsave("/PATH/TO/OUTPUT/icc_age_sub_task_overlap_within_net_100_40.png", icc_age_sub_task_overlap_within_plot1, width = 15, height=10, units='cm', dpi=500)
 ```
 
 ```{r}
@@ -261,7 +222,7 @@ icc_sub_task_age_overlap_between_prop_plot1 <- icc_sub_age_overlap_clean_flip_be
 
 icc_sub_task_age_overlap_between_prop_plot1
 
-ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_age_sub_task_overlap_between_net_100_40.png", icc_sub_task_age_overlap_between_prop_plot1, width = 15, height=10, units='cm', dpi=500)
+ggsave("/PATH/TO/OUTPUT/icc_age_sub_task_overlap_between_net_100_40.png", icc_sub_task_age_overlap_between_prop_plot1, width = 15, height=10, units='cm', dpi=500)
 ```
 
 ```{r}
@@ -296,7 +257,7 @@ icc_sub_task_overlap_within_plot1 <- icc_sub_task_overlap_clean_flip_within %>%
 
 #icc_sub_task_overlap_within_plot1
 
-#ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_overlap_within_net_150_40.png", icc_sub_task_overlap_within_plot1, width = 15, height=10, units='cm', dpi=500)
+#ggsave("/PATH/TO/OUTPUT/icc_sub_task_overlap_within_net_150_40.png", icc_sub_task_overlap_within_plot1, width = 15, height=10, units='cm', dpi=500)
 
 ```
 
@@ -330,6 +291,6 @@ icc_sub_task_overlap_between_plot1 <- icc_sub_task_overlap_clean_flip_between %>
 
 icc_sub_task_overlap_between_plot1
 
-ggsave("/Users/fredericst-onge/Desktop/Fingerprinting_Project/CAMCAN/10_ICC/03_results/icc_sub_task_overlap_between_net_150_40.png", icc_sub_task_overlap_between_plot1, width = 15, height=10, units='cm', dpi=500)
+ggsave("/PATH/TO/OUTPUT/icc_sub_task_overlap_between_net_150_40.png", icc_sub_task_overlap_between_plot1, width = 15, height=10, units='cm', dpi=500)
 ```
 
